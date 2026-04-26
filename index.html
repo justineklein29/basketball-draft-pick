@@ -1,0 +1,418 @@
+<!-- 
+- Fetches 10 random players from an API and displays them as cards.
+- Allows users to draft players by clicking the "Draft" button.
+- Stores drafted players in an array for team management.
+- Displays a floating draft panel showing selected players.
+- Lets users assign basketball roles to each drafted player.
+- Allows players to be removed (undrafted) from the roster.
+- Updates a badge showing the total number of drafted players.
+- Reloads a new set of 10 players when the reload button is clicked.
+- Supports filtering players by male, female, or all categories. 
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basketball Draft</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: #080c18;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Barlow Condensed", sans-serif;
+      }
+
+      .draft-root {
+        width: 100%;
+        min-height: 100vh;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 24px;
+      }
+
+      .court-lines {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.07;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+        opacity: 0.04;
+        pointer-events: none;
+      }
+
+      .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      .glow-orb.center {
+        width: 700px;
+        height: 700px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(
+          circle,
+          rgba(201, 148, 30, 0.12) 0%,
+          transparent 70%
+        );
+      }
+      .glow-orb.left {
+        width: 400px;
+        height: 400px;
+        top: -100px;
+        left: -100px;
+        background: radial-gradient(
+          circle,
+          rgba(255, 80, 30, 0.08) 0%,
+          transparent 70%
+        );
+      }
+      .glow-orb.right {
+        width: 350px;
+        height: 350px;
+        bottom: -80px;
+        right: -80px;
+        background: radial-gradient(
+          circle,
+          rgba(30, 100, 255, 0.08) 0%,
+          transparent 70%
+        );
+      }
+
+      .content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        width: 100%;
+        max-width: 600px;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: #c9941e;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+      .eyebrow::before,
+      .eyebrow::after {
+        content: "";
+        display: block;
+        width: 36px;
+        height: 1px;
+        background: #c9941e;
+        opacity: 0.5;
+      }
+
+      .main-title {
+        font-size: clamp(64px, 12vw, 96px);
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        line-height: 0.88;
+        color: #f0e8d6;
+        margin: 0 0 6px;
+        animation: titleIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .main-title span {
+        color: #c9941e;
+        display: block;
+      }
+
+      @keyframes titleIn {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .season-badge {
+        display: inline-block;
+        background: rgba(201, 148, 30, 0.12);
+        border: 1px solid rgba(201, 148, 30, 0.3);
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #c9941e;
+        padding: 5px 14px;
+        margin: 18px 0 32px;
+      }
+
+      .nav-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        width: 100%;
+        margin-bottom: 32px;
+      }
+
+      .nav-btn {
+        position: relative;
+        font-family: "Barlow Condensed", sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        padding: 18px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(240, 232, 214, 0.12);
+        background: rgba(240, 232, 214, 0.04);
+        color: rgba(240, 232, 214, 0.6);
+        cursor: pointer;
+        transition: all 0.22s;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+      }
+      .nav-btn .btn-icon {
+        font-size: 24px;
+        line-height: 1;
+        transition: transform 0.22s;
+      }
+      .nav-btn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(201, 148, 30, 0.15),
+          transparent
+        );
+        opacity: 0;
+        transition: opacity 0.22s;
+      }
+      .nav-btn:hover {
+        border-color: rgba(201, 148, 30, 0.5);
+        color: #f0e8d6;
+        transform: translateY(-3px);
+      }
+      .nav-btn:hover::before {
+        opacity: 1;
+      }
+      .nav-btn:hover .btn-icon {
+        transform: scale(1.15);
+      }
+
+      .music-bar {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        background: rgba(240, 232, 214, 0.04);
+        border: 1px solid rgba(240, 232, 214, 0.1);
+        border-radius: 40px;
+        padding: 10px 18px;
+        cursor: pointer;
+        transition: all 0.22s;
+      }
+      .music-bar:hover {
+        background: rgba(201, 148, 30, 0.1);
+        border-color: rgba(201, 148, 30, 0.3);
+      }
+
+      .play-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #c9941e;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.18s;
+      }
+      .play-btn:hover {
+        background: #e0a820;
+        transform: scale(1.08);
+      }
+      .play-btn svg {
+        margin-left: 2px;
+      }
+
+      .track-info {
+        text-align: left;
+      }
+      .track-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: #f0e8d6;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .track-artist {
+        font-size: 11px;
+        color: rgba(240, 232, 214, 0.45);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .equalizer {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 20px;
+      }
+      .eq-bar {
+        width: 3px;
+        border-radius: 2px;
+        background: #c9941e;
+        opacity: 0.25;
+        height: 4px;
+      }
+      .eq-bar.active {
+        opacity: 0.8;
+        animation: eq 0.6s ease-in-out infinite alternate;
+      }
+      .eq-bar:nth-child(1) {
+        animation-delay: 0s;
+      }
+      .eq-bar:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      .eq-bar:nth-child(3) {
+        animation-delay: 0.05s;
+      }
+      .eq-bar:nth-child(4) {
+        animation-delay: 0.22s;
+      }
+      .eq-bar:nth-child(5) {
+        animation-delay: 0.08s;
+      }
+
+      @keyframes eq {
+        from {
+          height: 4px;
+          opacity: 0.4;
+        }
+        to {
+          height: 20px;
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .nav-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="draft-root">
+      <div class="grain"></div>
+      <div class="glow-orb center"></div>
+      <div class="glow-orb left"></div>
+      <div class="glow-orb right"></div>
+
+      <svg
+        class="court-lines"
+        viewBox="0 0 1200 800"
+        xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <g stroke="#f0e8d6" stroke-width="1.5" fill="none">
+          <rect x="20" y="20" width="1160" height="760" rx="4" />
+          <circle cx="600" cy="400" r="80" />
+          <line x1="600" y1="20" x2="600" y2="780" />
+          <rect x="420" y="20" width="360" height="180" />
+          <circle cx="600" cy="200" r="40" />
+          <path d="M 530 20 A 80 80 0 0 1 670 20" />
+          <rect x="420" y="600" width="360" height="180" />
+          <circle cx="600" cy="600" r="40" />
+          <path d="M 530 780 A 80 80 0 0 0 670 780" />
+          <path d="M 20 300 Q 120 400 20 500" />
+          <path d="M 1180 300 Q 1080 400 1180 500" />
+        </g>
+      </svg>
+
+      <div class="content">
+        <div class="eyebrow">Season 2025–26</div>
+        <h1 class="main-title">Basketball<span>Draft</span></h1>
+        <div class="season-badge">Select your roster pool</div>
+
+        <div class="nav-grid">
+          <a class="nav-btn" href="all.html">
+            <span class="btn-icon">🏀</span>
+            All Players
+          </a>
+          <a class="nav-btn" href="male.html">
+            <span class="btn-icon">👦</span>
+            Male Players
+          </a>
+          <a class="nav-btn" href="female.html">
+            <span class="btn-icon">👧</span>
+            Female Players
+          </a>
+        </div>
+
+        <div class="music-bar" onclick="toggleMusic()">
+          <button class="play-btn" id="playBtn" aria-label="Play music">
+            <svg
+              id="playIcon"
+              width="12"
+              height="14"
+              viewBox="0 0 12 14"
+              fill="none"
+            >
+              <path d="M1 1L11 7L1 13V1Z" fill="#080c18" />
+            </svg>
+          </button>
+          <div class="track-info">
+            <div class="track-name" id="trackName">Draft Day Vibes</div>
+            <div class="track-artist" id="trackArtist">Click to play</div>
+          </div>
+          <div class="equalizer" id="eq">
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="js/music.js"></script>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Basketball Draft — Male Players</title>
+
+    <link rel="stylesheet" href="css/api.css" />
+  </head>
+  <body>
+    <h1>Basketball Draft</h1>
+    <div class="music-bar">
+      <div class="music-bar" onclick="toggleMusic()">
+        <button class="play-btn" id="playBtn" aria-label="Play music">
+          <svg
+            id="playIcon"
+            width="12"
+            height="14"
+            viewBox="0 0 12 14"
+            fill="none"
+          >
+            <path d="M1 1L11 7L1 13V1Z" fill="#080c18" />
+          </svg>
+        </button>
+        <div class="track-info">
+          <div class="track-name" id="trackName">Draft Day Vibes</div>
+          <div class="track-artist" id="trackArtist">Click to play</div>
+        </div>
+        <div class="equalizer" id="eq">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+    </div>
+    <div class="page-nav">
+      <a class="back-btn" href="index.html">← Back</a>
+      <span class="page-label">⚡ Male Players</span>
+    </div>
+
+    <div class="filters">
+      <button id="reload-btn">↺ Reload Players</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="user-container"></div>
+
+    <script src="js/male.js"></script>
+    <script src="js/music.js"></script>
+  </body>
+</html>
